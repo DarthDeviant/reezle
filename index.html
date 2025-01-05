@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guess the Mystery Song</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f7f7f7;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background: #fff;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            text-align: center;
+            width: 90%;
+            max-width: 600px;
+        }
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: #555;
+        }
+        input {
+            padding: 10px;
+            font-size: 1rem;
+            margin: 10px 0;
+            width: calc(100% - 24px);
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .guess-list {
+            margin: 20px 0;
+            list-style: none;
+            padding: 0;
+        }
+        .guess-item {
+            background: #f1f1f1;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .feedback {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        #hint {
+            margin-top: 10px;
+            background-color: #ffeb3b;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Guess the Mystery Song</h1>
+        <p>Enter the title of a song below and see if you can guess the mystery track!</p>
+        <input type="text" id="song-input" placeholder="Enter song title">
+        <button onclick="makeGuess()">Submit</button>
+        <button id="hint" onclick="giveHint()">Hint</button>
+        <ul class="guess-list" id="guess-list"></ul>
+    </div>
+
+    <script>
+        const clientId = '9ff535e446804dcba85d7fbe3939de3a';
+        const clientSecret = '81d55213b97c42e3b80874fefc215812';
+        const artistId = '7peXRjtbFS0TmD2IDDQzcL';
+        let tracks = [];
+        let mysterySong = '';
+        let hintGiven = false;
+
+        async function getAccessToken() {
+            const tokenInfo = JSON.parse(localStorage.getItem('spotify_token'));
+            const now = Date.now();
+
+            // Check if token exists and is not expired
+            if (tokenInfo && tokenInfo.expiry > now) {
+                return tokenInfo.token;
+            }
+
+            // Fetch a new token
+            const response = await fetch('https://accounts.spotify.com/api/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Authorization': 'Basic ' + btoa(`${clientId}:${clientSecret}`)
+                },
+                body: 'grant_type=client_credentials'
+            });
+
+            const data = await response.json();
+            const expiry = now + data.expires_in * 1000;
+
+            // Save the new token in localStorage
+            localStorage.setItem('spotify_token', JSON.stringify({ token: data.access_token, expiry }));
+            return data.access_token;
+        }
+
+        async function fetchTracks() {
+            const token = await getAccessToken();
+            const response = await fetch(`https://api.spotify.com/v1/artists/${artistId}/albums?include_groups=album,single`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+
+            for (const album of data.items) {
+                const albumResponse = await fetch(`https://api.spotify.com/v1/albums/${album.id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const albumData = await albumResponse.json();
+                tracks.push(...albumData.tracks.items.map(track => track.name));
+            }
+
+            mysterySong = tracks[Math.floor(Math.random() * tracks.length)];
+            console.log(`Mystery Song: ${mysterySong}`); // For testing purposes
+        }
+
+        function makeGuess() {
+            const input = document.getElementById('song-input');
+            const guess = input.value.trim();
+
+            if (guess) {
+                const feedback = guess.toLowerCase() === mysterySong.toLowerCase() ? "Correct!" : "Try again!";
+                renderGuess(guess, feedback);
+                if (guess.toLowerCase() === mysterySong.toLowerCase()) {
+                    alert(`You guessed it! The mystery song is: ${mysterySong}`);
+                }
+                input.value = "";
+            }
+        }
+
+        function renderGuess(guess, feedback) {
+            const guessList = document.getElementById('guess-list');
+            const listItem = document.createElement('li');
+            listItem.classList.add('guess-item');
+            listItem.innerHTML = `<span>${guess}</span><span class="feedback">${feedback}</span>`;
+            guessList.appendChild(listItem);
+        }
+
+        function giveHint() {
+            if (!hintGiven) {
+                const hint = mysterySong.charAt(0).toUpperCase(); // Hint is the first letter of the song
+                alert(`Hint: The mystery song starts with the letter "${hint}"`);
+                hintGiven = true;
+            } else {
+                alert("You've already used the hint!");
+            }
+        }
+
+        // Fetch tracks on page load
+        fetchTracks();
+    </script>
+</body>
+</html>
