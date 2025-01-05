@@ -73,6 +73,10 @@
             background-color: #ffeb3b;
             color: #333;
         }
+        #answer {
+            background-color: #f44336;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -82,13 +86,14 @@
         <input type="text" id="song-input" placeholder="Enter song title">
         <button onclick="makeGuess()">Submit</button>
         <button id="hint" onclick="giveHint()">Hint</button>
+        <button id="answer" onclick="revealAnswer()">Answer</button>
         <ul class="guess-list" id="guess-list"></ul>
     </div>
 
     <script>
         const clientId = '9ff535e446804dcba85d7fbe3939de3a';
         const clientSecret = '81d55213b97c42e3b80874fefc215812';
-        const artistId = '7peXRjtbFS0TmD2IDDQzcL';
+        const artistId = '7peXRjtbFS0TmD2IDDQzcL';  // Kanye West artist ID
         let tracks = [];
         let mysterySong = '';
         let hintGiven = false;
@@ -169,6 +174,10 @@
             } else {
                 alert("You've already used the hint!");
             }
+        }
+
+        function revealAnswer() {
+            alert(`The mystery song is: ${mysterySong}`);
         }
 
         // Fetch tracks on page load
