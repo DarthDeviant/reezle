@@ -124,26 +124,50 @@
             }
         }
 
-        async function fetchTracks() {
-            try {
-                const token = await getAccessToken();
-                if (!token) return;
+       async function fetchTracks() {
+    try {
+        const token = await getAccessToken();
+        if (!token) return;
 
-                const response = await fetch(`https://api.spotify.com/v1/artists/${artistId}/albums?include_groups=album,single`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+        // Fetch artist albums (limit to 50 to avoid pagination issues)
+        const albumsResponse = await fetch(`https://api.spotify.com/v1/artists/${artistId}/albums?include_groups=album,single&limit=50`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
 
-                if (!response.ok) throw new Error('Failed to fetch albums');
+        if (!albumsResponse.ok) throw new Error('Failed to fetch albums');
 
-                const data = await response.json();
+        const albumsData = await albumsResponse.json();
 
-                for (const album of data.items) {
-                    const albumResponse = await fetch(`https://api.spotify.com/v1/albums/${album.id}`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    const albumData = await albumResponse.json();
-                    tracks.push(...albumData.tracks.items.map(track => track.name));
-                }
+        // Extract unique album IDs to avoid duplicates
+        const albumIds = [...new Set(albumsData.items.map(album => album.id))];
+
+        // Fetch tracks for all albums
+        const trackPromises = albumIds.map(async albumId => {
+            const albumResponse = await fetch(`https://api.spotify.com/v1/albums/${albumId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (!albumResponse.ok) throw new Error(`Failed to fetch tracks for album ${albumId}`);
+
+            const albumData = await albumResponse.json();
+            return albumData.tracks.items.map(track => track.name);
+        });
+
+        const trackResults = await Promise.all(trackPromises);
+
+        // Flatten the nested arrays and remove duplicates
+        tracks = [...new Set(trackResults.flat())];
+
+        // Randomly select the mystery song
+        mysterySong = tracks[Math.floor(Math.random() * tracks.length)];
+
+        console.log(`Fetched ${tracks.length} tracks. Mystery song: "${mysterySong}"`); // Debugging log
+    } catch (error) {
+        alert('Error fetching tracks. Please try again later.');
+        console.error(error);
+    }
+}
+
 
                 mysterySong = tracks[Math.floor(Math.random() * tracks.length)];
             } catch (error) {
